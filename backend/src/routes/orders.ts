@@ -56,6 +56,7 @@ export const createOrdersRouter = (store: MemoryStore): Router => {
 
     res.status(200).json({
       ok: result.ok,
+      alreadySynced: result.ok ? result.alreadySynced : undefined,
       error: result.ok ? undefined : result.error,
       order: toOrderResponse(result.order),
     });

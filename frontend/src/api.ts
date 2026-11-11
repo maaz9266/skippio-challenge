@@ -54,9 +54,18 @@ export const getOrder = async (orderId: string) => {
   return { status: response.status, body: await parseJson(response) };
 };
 
-export const syncOrder = async (orderId: string) => {
+export const syncOrder = async (orderId: string, delayMs = 0) => {
+  const query = delayMs > 0 ? `?delayMs=${delayMs}` : "";
   const response = await fetch(
-    `${API_BASE}/orders/${encodeURIComponent(orderId)}/sync`,
+    `${API_BASE}/orders/${encodeURIComponent(orderId)}/sync${query}`,
+    { method: "POST" },
+  );
+  return { status: response.status, body: await parseJson(response) };
+};
+
+export const refundOrder = async (orderId: string) => {
+  const response = await fetch(
+    `${API_BASE}/orders/${encodeURIComponent(orderId)}/refund`,
     { method: "POST" },
   );
   return { status: response.status, body: await parseJson(response) };
@@ -69,5 +78,21 @@ export const getDevStore = async () => {
 
 export const resetDevStore = async () => {
   const response = await fetch(`${API_BASE}/dev/store/reset`, { method: "POST" });
+  return { status: response.status, body: await parseJson(response) };
+};
+
+export const unsyncOrder = async (orderId: string) => {
+  const response = await fetch(
+    `${API_BASE}/dev/orders/${encodeURIComponent(orderId)}/unsync`,
+    { method: "POST" },
+  );
+  return { status: response.status, body: await parseJson(response) };
+};
+
+export const unrefundOrder = async (orderId: string) => {
+  const response = await fetch(
+    `${API_BASE}/dev/orders/${encodeURIComponent(orderId)}/unrefund`,
+    { method: "POST" },
+  );
   return { status: response.status, body: await parseJson(response) };
 };

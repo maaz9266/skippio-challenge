@@ -4,8 +4,11 @@ import {
   getDevStore,
   getOrder,
   postPaymentEvent,
+  refundOrder,
   resetDevStore,
   syncOrder,
+  unrefundOrder,
+  unsyncOrder,
   type LineItem,
   type OrderView,
 } from "./api";
@@ -45,6 +48,12 @@ const App = () => {
   } | null>(null);
   const [showDev, setShowDev] = useState(false);
   const [devStore, setDevStore] = useState<unknown>(null);
+  const [parallelResult, setParallelResult] = useState<{
+    kind: "sync" | "refund";
+    ranAt: string;
+    left: { label: string; status: number; body: unknown };
+    right: { label: string; status: number; body: unknown };
+  } | null>(null);
 
   const totalCents = useMemo(() => calculateTotalCents(items), [items]);
 
@@ -149,6 +158,12 @@ const App = () => {
     }
   };
 
+  const refreshAfterAction = async () => {
+    if (showDev) {
+      await refreshDev();
+    }
+  };
+
   const retrySync = async () => {
     if (!order) {
       return;
@@ -158,13 +173,132 @@ const App = () => {
     try {
       const result = await syncOrder(order.id);
       applyOrderResult(result.body, `Sync finished (${result.status})`);
-      if (showDev) {
-        await refreshDev();
-      }
+      await refreshAfterAction();
     } catch (error) {
       setFeedback({
         tone: "error",
         message: error instanceof Error ? error.message : "Sync failed",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const raceSyncRequests = async () => {
+    if (!order) {
+      return;
+    }
+    setLoading(true);
+    setFeedback(null);
+    try {
+      const [a, b] = await Promise.all([
+        syncOrder(order.id, 120),
+        syncOrder(order.id, 120),
+      ]);
+      setParallelResult({
+        kind: "sync",
+        ranAt: new Date().toLocaleTimeString(),
+        left: {
+          label: "Request A — POST /sync?delayMs=120",
+          status: a.status,
+          body: a.body,
+        },
+        right: {
+          label: "Request B — POST /sync?delayMs=120",
+          status: b.status,
+          body: b.body,
+        },
+      });
+      const winner = readOrderFromBody(a.body) ?? readOrderFromBody(b.body);
+      if (winner) {
+        setOrder(winner);
+        setLookupId(winner.id);
+      }
+      setFeedback({
+        tone: "ok",
+        message: `Parallel syncs → ${a.status} & ${b.status}`,
+      });
+      await refreshAfterAction();
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        message: error instanceof Error ? error.message : "Parallel sync failed",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const canRefund =
+    order?.paymentStatus === "paid" &&
+    order.posStatus === "synced" &&
+    order.refundStatus === "none";
+
+  const requestRefund = async () => {
+    if (!order) {
+      return;
+    }
+    setLoading(true);
+    setFeedback(null);
+    try {
+      const result = await refundOrder(order.id);
+      applyOrderResult(
+        result.body,
+        result.status === 200
+          ? `Full refund applied (${result.status})`
+          : `Refund rejected (${result.status})`,
+      );
+      await refreshAfterAction();
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        message: error instanceof Error ? error.message : "Refund failed",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const raceRefundRequests = async () => {
+    if (!order) {
+      return;
+    }
+    setLoading(true);
+    setFeedback(null);
+    try {
+      const [a, b] = await Promise.all([
+        refundOrder(order.id),
+        refundOrder(order.id),
+      ]);
+      setParallelResult({
+        kind: "refund",
+        ranAt: new Date().toLocaleTimeString(),
+        left: {
+          label: "Request A — POST /refund",
+          status: a.status,
+          body: a.body,
+        },
+        right: {
+          label: "Request B — POST /refund",
+          status: b.status,
+          body: b.body,
+        },
+      });
+      const winner = readOrderFromBody(a.body) ?? readOrderFromBody(b.body);
+      if (winner) {
+        setOrder(winner);
+        setLookupId(winner.id);
+      }
+      setFeedback({
+        tone: "ok",
+        message: `Parallel refunds → ${a.status} & ${b.status}`,
+      });
+      await refreshAfterAction();
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        message:
+          error instanceof Error ? error.message : "Parallel refund failed",
       });
     } finally {
       setLoading(false);
@@ -182,6 +316,49 @@ const App = () => {
       setFeedback({
         tone: "error",
         message: error instanceof Error ? error.message : "Reset failed",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetOrderUnsynced = async () => {
+    if (!order) {
+      return;
+    }
+    setLoading(true);
+    setFeedback(null);
+    try {
+      const result = await unsyncOrder(order.id);
+      applyOrderResult(result.body, `Order POS reset to not synced (${result.status})`);
+      await refreshAfterAction();
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        message: error instanceof Error ? error.message : "Unsync failed",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetOrderUnrefunded = async () => {
+    if (!order) {
+      return;
+    }
+    setLoading(true);
+    setFeedback(null);
+    try {
+      const result = await unrefundOrder(order.id);
+      applyOrderResult(
+        result.body,
+        `Order refund cleared (${result.status})`,
+      );
+      await refreshAfterAction();
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        message: error instanceof Error ? error.message : "Unrefund failed",
       });
     } finally {
       setLoading(false);
@@ -401,10 +578,25 @@ const App = () => {
               >
                 Retry POS sync
               </button>
+              <button
+                type="button"
+                disabled={loading || !canRefund}
+                onClick={() => void requestRefund()}
+              >
+                Refund order
+              </button>
               {order.posStatus === "failed" && (
                 <span className="muted">
                   First attempt fails by design — retry should succeed.
                 </span>
+              )}
+              {canRefund && (
+                <span className="muted">
+                  Full refund of {formatEurCents(order.total)} (API-simulated).
+                </span>
+              )}
+              {order.refundStatus === "refunded" && (
+                <span className="muted">This order is already refunded.</span>
               )}
             </div>
           </div>
@@ -413,30 +605,145 @@ const App = () => {
         )}
       </section>
 
-      <section className="panel">
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => {
-            const next = !showDev;
-            setShowDev(next);
-            if (next) {
-              void refreshDev();
-            }
-          }}
-        >
-          {showDev ? "Hide" : "Show"} local /dev store
-        </button>
+      <section className="panel debug-panel">
+        <div className="debug-header">
+          <div>
+            <h2>Debug testing</h2>
+            <p className="muted">
+              Force parallel requests and mutate order state. Not part of the
+              product UI.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              const next = !showDev;
+              setShowDev(next);
+              if (next) {
+                void refreshDev();
+              }
+            }}
+          >
+            {showDev ? "Hide" : "Show"} panel
+          </button>
+        </div>
+
         {showDev && (
           <>
-            <div className="actions" style={{ marginTop: "0.75rem" }}>
-              <button type="button" disabled={loading} onClick={() => void refreshDev()}>
-                Refresh
+            <h3>Parallel requests (always available for loaded order)</h3>
+            <div className="actions">
+              <button
+                type="button"
+                className="secondary"
+                disabled={loading || !order}
+                onClick={() => void raceSyncRequests()}
+              >
+                Send 2 syncs in parallel
               </button>
-              <button type="button" disabled={loading} onClick={() => void resetStore()}>
-                Reset store
+              <button
+                type="button"
+                className="secondary"
+                disabled={loading || !order}
+                onClick={() => void raceRefundRequests()}
+              >
+                Send 2 refunds in parallel
               </button>
             </div>
+            <p className="muted">
+              While POS is <code>failed</code>, expect 200 + 409. After{" "}
+              <code>synced</code>, both return 200 with{" "}
+              <code>alreadySynced</code> (idempotent — no second POS call). Use
+              “Mark order not synced” to race again. Sync uses a 120ms delay.
+            </p>
+
+            {parallelResult && (
+              <div className="parallel-results">
+                <div className="parallel-results-meta">
+                  <strong>
+                    Last parallel {parallelResult.kind} run · {parallelResult.ranAt}
+                  </strong>
+                </div>
+                <div className="parallel-grid">
+                  <article className="parallel-card">
+                    <header>
+                      <span>{parallelResult.left.label}</span>
+                      <span
+                        className={
+                          parallelResult.left.status >= 400
+                            ? "status bad"
+                            : "status good"
+                        }
+                      >
+                        HTTP {parallelResult.left.status}
+                      </span>
+                    </header>
+                    <pre className="dump">
+                      {JSON.stringify(parallelResult.left.body, null, 2)}
+                    </pre>
+                  </article>
+                  <article className="parallel-card">
+                    <header>
+                      <span>{parallelResult.right.label}</span>
+                      <span
+                        className={
+                          parallelResult.right.status >= 400
+                            ? "status bad"
+                            : "status good"
+                        }
+                      >
+                        HTTP {parallelResult.right.status}
+                      </span>
+                    </header>
+                    <pre className="dump">
+                      {JSON.stringify(parallelResult.right.body, null, 2)}
+                    </pre>
+                  </article>
+                </div>
+              </div>
+            )}
+
+            <h3>Reset order state</h3>
+            <div className="actions">
+              <button
+                type="button"
+                className="secondary"
+                disabled={loading || !order}
+                onClick={() => void resetOrderUnsynced()}
+              >
+                Mark order not synced
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={loading || !order}
+                onClick={() => void resetOrderUnrefunded()}
+              >
+                Clear refund state
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={loading}
+                onClick={() => void refreshDev()}
+              >
+                Refresh /dev/store
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={loading}
+                onClick={() => void resetStore()}
+              >
+                Reset entire store
+              </button>
+            </div>
+            <p className="muted">
+              Not synced → removes POS transactions, sets <code>posStatus:
+              failed</code>. Clear refund → paid + <code>refundStatus: none</code>.
+            </p>
+
+            <h3>In-memory store</h3>
             <pre className="dump">{JSON.stringify(devStore, null, 2)}</pre>
           </>
         )}

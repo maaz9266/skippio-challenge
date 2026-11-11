@@ -59,4 +59,38 @@ describe("GET /dev/store", () => {
     expect(reset.status).toBe(200);
     expect(dump.body.counts.orders).toBe(0);
   });
+
+  it("can unsync and unrefund an order for local testing", async () => {
+    const app = createApp(store);
+    await request(app)
+      .post("/payment-events")
+      .send({
+        eventId: "evt_001",
+        type: "payment.succeeded",
+        order: {
+          id: "ord_001",
+          venueId: "venue_001",
+          currency: "EUR",
+          items: [{ productId: "burger", quantity: 1, price: 1000 }],
+          total: 1000,
+        },
+      });
+    await request(app).post("/orders/ord_001/sync");
+    await request(app).post("/orders/ord_001/refund");
+
+    const unrefund = await request(app).post("/dev/orders/ord_001/unrefund");
+    expect(unrefund.status).toBe(200);
+    expect(unrefund.body.order).toMatchObject({
+      paymentStatus: "paid",
+      refundStatus: "none",
+      posStatus: "synced",
+    });
+    expect(unrefund.body.order.refundedAmount).toBeUndefined();
+
+    const unsync = await request(app).post("/dev/orders/ord_001/unsync");
+    expect(unsync.status).toBe(200);
+    expect(unsync.body.order.posStatus).toBe("failed");
+    expect(unsync.body.order.posTransactionRef).toBeUndefined();
+    expect(store.posTransactions.size).toBe(0);
+  });
 });

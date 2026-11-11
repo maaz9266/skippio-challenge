@@ -35,6 +35,17 @@ export class MemoryStore {
     this.posTransactions.set(transaction.transactionRef, transaction);
   };
 
+  deletePosTransactionsForOrder = (orderId: string): number => {
+    let removed = 0;
+    for (const [ref, tx] of this.posTransactions.entries()) {
+      if (tx.orderId === orderId) {
+        this.posTransactions.delete(ref);
+        removed += 1;
+      }
+    }
+    return removed;
+  };
+
   /** Clears all maps — intended for tests. */
   reset = (): void => {
     this.orders.clear();

@@ -5,7 +5,7 @@ import type { Order } from "../types/domain.js";
 import { canTransitionPos } from "../types/transitions.js";
 
 export type SyncOrderResult =
-  | { ok: true; order: Order }
+  | { ok: true; order: Order; alreadySynced?: boolean }
   | { ok: false; order: Order; error: string; inProgress?: boolean };
 
 const buildPosPayload = (order: Order) => ({
@@ -44,7 +44,8 @@ export const syncOrderToPos = async (
   }
 
   if (order.posStatus === "synced") {
-    return { ok: true, order };
+    // Idempotent: no second POS call. Concurrent requests both get 200.
+    return { ok: true, order, alreadySynced: true };
   }
 
   if (order.posStatus === "syncing") {
