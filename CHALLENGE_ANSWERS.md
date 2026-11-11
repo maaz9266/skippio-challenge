@@ -71,9 +71,3 @@ Manual UI: submit, duplicate resubmit, lookup, fail → retry. No automated fron
 3. Already synced → **200** + `alreadySynced`  
 4. Item equality = compare items in supplied order  
 5. Refund UI / `/dev` tooling are optional extras  
-
----
-
-## Production follow-ups (not built)
-
-Persistence, multi-instance concurrency, durable idempotency, real POS keys, webhook auth, monitoring — see README.

@@ -20,8 +20,3 @@ AI tools were used during this exercise (Cursor agent / Composer).
 - `cd backend && npm test` (includes brief six-group coverage)
 - Backend/frontend `typecheck` + `build`
 - Manual UI demos and `/dev` store inspection
-
-## Limitations
-
-- Candidate must still be able to explain, debug, and modify all submitted code in interview
-- AI-assisted docs may lag code if not re-checked after late UI tweaks — keep `CHALLENGE_ANSWERS.md` as the behaviour map

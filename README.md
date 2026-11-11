@@ -106,15 +106,6 @@ Incremental commits on `main`, pushed at milestones (scaffold → domain → pay
 
 Nothing required by the brief is knowingly incomplete. Optional extras: refund button and `/dev` debug panel.
 
-## What I’d change before production
-
-- Persistent storage and durable idempotency keys  
-- Multi-instance concurrency (DB constraints / locks, not in-memory `syncing`)  
-- Real POS idempotency + reconciliation  
-- Payment webhook auth/signing  
-- Retry/backoff, metrics, alerting  
-- Remove or gate `/dev` and `?delayMs=` sync helpers  
-
 ## AI
 
 See `AI_USAGE.md`.
