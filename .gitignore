@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+build/
+*.tsbuildinfo
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Logs & coverage
+logs/
+*.log
+npm-debug.log*
+coverage/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test / cache
+.vitest/
+.cache/
+
+# Package managers
+yarn.lock
+.yarn/
