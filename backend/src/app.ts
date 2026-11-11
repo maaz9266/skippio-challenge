@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 import { memoryStore, type MemoryStore } from "./store/memoryStore.js";
+import { createDebugRouter } from "./routes/debug.js";
 import { createPaymentEventsRouter } from "./routes/paymentEvents.js";
 
 export const createApp = (store: MemoryStore = memoryStore) => {
@@ -18,6 +19,7 @@ export const createApp = (store: MemoryStore = memoryStore) => {
   });
 
   app.use("/payment-events", createPaymentEventsRouter(store));
+  app.use("/debug", createDebugRouter(store));
 
   return app;
 };

@@ -6,7 +6,7 @@ import { canTransitionPos } from "../types/transitions.js";
 
 export type SyncOrderResult =
   | { ok: true; order: Order }
-  | { ok: false; order: Order; error: string };
+  | { ok: false; order: Order; error: string; inProgress?: boolean };
 
 const buildPosPayload = (order: Order) => ({
   venueId: order.venueId,
@@ -19,10 +19,19 @@ const buildPosPayload = (order: Order) => ({
 /**
  * Attempts POS synchronisation for an order.
  *
- * Attempt accounting:
- * - `posAttemptCount` is incremented when the attempt starts (before the POS call).
- * - An accepted `PosTransaction` is written only after the adapter accepts.
- * - Failure sets `posStatus` to `failed` and never changes `paymentStatus`.
+ * Concurrency (single process):
+ * - Race: two requests could both read `pending`/`failed` and both call POS
+ *   if status were updated only after an `await`.
+ * - Guard: transition to `syncing` and increment `posAttemptCount`
+ *   synchronously before any asynchronous POS call. A second overlapping
+ *   request sees `syncing` and returns without calling POS.
+ *
+ * Overlapping response: `{ ok: false, inProgress: true, error: "..." }`.
+ * After success: `synced` (no further POS calls).
+ * After failure: `failed` (eligible for retry); `paymentStatus` unchanged.
+ * `syncing` is always cleared to `failed` or `synced` before return.
+ *
+ * Paths that call this: initial payment processing; later manual retry (Phase 7).
  */
 export const syncOrderToPos = async (
   store: MemoryStore,
@@ -42,6 +51,7 @@ export const syncOrderToPos = async (
     return {
       ok: false,
       order,
+      inProgress: true,
       error: "POS synchronisation already in progress",
     };
   }
@@ -54,6 +64,7 @@ export const syncOrderToPos = async (
     };
   }
 
+  // Claim the sync slot before the first await (closes the check-then-act race).
   order.posStatus = "syncing";
   order.posAttemptCount += 1;
   store.saveOrder(order);

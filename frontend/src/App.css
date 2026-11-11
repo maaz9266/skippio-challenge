@@ -1,18 +1,106 @@
 .app {
-  max-width: 40rem;
-  margin: 3rem auto;
+  max-width: 56rem;
+  margin: 2rem auto 3rem;
   padding: 0 1.25rem;
   font-family: system-ui, sans-serif;
   line-height: 1.5;
+  color: #1f2328;
 }
 
-.ok {
-  background: #f4f6f8;
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.6rem;
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.muted {
+  margin: 0;
+  color: #656d76;
+}
+
+.health {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.panel {
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+button {
+  border: 1px solid #d0d7de;
+  background: #f6f8fa;
+  border-radius: 6px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #eef1f4;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+}
+
+.dump {
+  margin: 0;
+  background: #f6f8fa;
   border: 1px solid #d0d7de;
   border-radius: 6px;
   padding: 0.75rem 1rem;
+  overflow: auto;
+  max-height: 28rem;
+  font-size: 0.85rem;
+}
+
+.logs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.log-meta {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.9rem;
 }
 
 .error {
   color: #b42318;
+  margin: 0 0 1rem;
 }
