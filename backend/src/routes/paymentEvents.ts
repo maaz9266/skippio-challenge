@@ -5,8 +5,8 @@ import { processPaymentEvent } from "../services/paymentService.js";
 export const createPaymentEventsRouter = (store: MemoryStore): Router => {
   const router = Router();
 
-  router.post("/", (req, res) => {
-    const result = processPaymentEvent(store, req.body);
+  router.post("/", async (req, res) => {
+    const result = await processPaymentEvent(store, req.body);
 
     if (!result.ok) {
       res.status(result.status).json({

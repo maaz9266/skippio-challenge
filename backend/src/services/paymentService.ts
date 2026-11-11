@@ -1,6 +1,7 @@
 import type { MemoryStore } from "../store/memoryStore.js";
 import type { Order, OrderResponse, PaymentEvent } from "../types/domain.js";
 import { validatePaymentEvent } from "./paymentValidation.js";
+import { syncOrderToPos } from "./posSyncService.js";
 
 export type ProcessPaymentFailure = {
   ok: false;
@@ -17,7 +18,7 @@ export type ProcessPaymentSuccess = {
 
 export type ProcessPaymentResult = ProcessPaymentFailure | ProcessPaymentSuccess;
 
-const toOrderResponse = (order: Order): OrderResponse => ({
+export const toOrderResponse = (order: Order): OrderResponse => ({
   id: order.id,
   venueId: order.venueId,
   currency: order.currency,
@@ -44,13 +45,13 @@ const createPaidOrder = (event: PaymentEvent): Order => ({
 });
 
 /**
- * Validates and records a first-time payment event as a paid order.
- * Duplicate / conflict / POS sync behaviour is intentionally deferred.
+ * Validates and records a first-time payment event as a paid order,
+ * then attempts POS synchronisation (first attempt fails by design).
  */
-export const processPaymentEvent = (
+export const processPaymentEvent = async (
   store: MemoryStore,
   payload: unknown,
-): ProcessPaymentResult => {
+): Promise<ProcessPaymentResult> => {
   const validation = validatePaymentEvent(payload);
   if (!validation.ok) {
     return {
@@ -67,9 +68,14 @@ export const processPaymentEvent = (
   store.saveOrder(order);
   store.recordProcessedEvent(event.eventId, order.id);
 
+  // Initial POS attempt: deterministic failure; payment remains paid.
+  await syncOrderToPos(store, order.id);
+
+  const latest = store.getOrder(order.id) ?? order;
+
   return {
     ok: true,
     status: 201,
-    order: toOrderResponse(order),
+    order: toOrderResponse(latest),
   };
 };

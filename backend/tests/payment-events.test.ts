@@ -38,8 +38,9 @@ describe("POST /payment-events", () => {
       currency: "EUR",
       total: 2650,
       paymentStatus: "paid",
-      posStatus: "pending",
-      posAttemptCount: 0,
+      // First POS attempt fails by design; payment remains paid.
+      posStatus: "failed",
+      posAttemptCount: 1,
       refundStatus: "none",
     });
     expect(response.body.order.items).toEqual(validEvent.order.items);
