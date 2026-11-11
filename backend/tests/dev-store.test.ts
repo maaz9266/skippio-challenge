@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
 import { MemoryStore } from "../src/store/memoryStore.js";
 
-describe("GET /debug/store", () => {
+describe("GET /dev/store", () => {
   let store: MemoryStore;
 
   beforeEach(() => {
@@ -27,7 +27,7 @@ describe("GET /debug/store", () => {
         },
       });
 
-    const response = await request(app).get("/debug/store");
+    const response = await request(app).get("/dev/store");
 
     expect(response.status).toBe(200);
     expect(response.body.counts).toEqual({
@@ -53,8 +53,8 @@ describe("GET /debug/store", () => {
       refundStatus: "none",
     });
 
-    const reset = await request(app).post("/debug/store/reset");
-    const dump = await request(app).get("/debug/store");
+    const reset = await request(app).post("/dev/store/reset");
+    const dump = await request(app).get("/dev/store");
 
     expect(reset.status).toBe(200);
     expect(dump.body.counts.orders).toBe(0);

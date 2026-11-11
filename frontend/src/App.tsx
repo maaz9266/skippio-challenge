@@ -22,6 +22,7 @@ type LogEntry = { at: string; label: string; body: unknown };
 
 const App = () => {
   const [storeDump, setStoreDump] = useState<unknown>(null);
+  const [orderLookup, setOrderLookup] = useState<unknown>(null);
   const [health, setHealth] = useState<string>("checking…");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,15 +30,17 @@ const App = () => {
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   const pushLog = useCallback((label: string, body: unknown) => {
-    setLogs((prev) => [
-      { at: new Date().toLocaleTimeString(), label, body },
-      ...prev,
-    ].slice(0, 12));
+    setLogs((prev) =>
+      [{ at: new Date().toLocaleTimeString(), label, body }, ...prev].slice(
+        0,
+        12,
+      ),
+    );
   }, []);
 
   const refreshStore = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/debug/store`);
+      const response = await fetch(`${API_BASE}/dev/store`);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -46,6 +49,18 @@ const App = () => {
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load store");
+    }
+  }, []);
+
+  const lookupOrder = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE}/orders/ord_001`);
+      const body: unknown = await response.json().catch(() => null);
+      setOrderLookup({ status: response.status, body });
+    } catch (err) {
+      setOrderLookup({
+        error: err instanceof Error ? err.message : "Lookup failed",
+      });
     }
   }, []);
 
@@ -60,7 +75,8 @@ const App = () => {
     };
     void check();
     void refreshStore();
-  }, [refreshStore]);
+    void lookupOrder();
+  }, [refreshStore, lookupOrder]);
 
   useEffect(() => {
     if (!autoRefresh) {
@@ -68,9 +84,10 @@ const App = () => {
     }
     const id = window.setInterval(() => {
       void refreshStore();
+      void lookupOrder();
     }, 1000);
     return () => window.clearInterval(id);
-  }, [autoRefresh, refreshStore]);
+  }, [autoRefresh, refreshStore, lookupOrder]);
 
   const run = async (label: string, action: () => Promise<Response>) => {
     setBusy(true);
@@ -80,6 +97,7 @@ const App = () => {
       const body: unknown = await response.json().catch(() => null);
       pushLog(`${label} → ${response.status}`, body);
       await refreshStore();
+      await lookupOrder();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
     } finally {
@@ -105,11 +123,9 @@ const App = () => {
       }),
     );
 
-  const syncOnce = (delayMs = 0) =>
-    run(`POST /debug/orders/ord_001/sync?delayMs=${delayMs}`, () =>
-      fetch(`${API_BASE}/debug/orders/ord_001/sync?delayMs=${delayMs}`, {
-        method: "POST",
-      }),
+  const syncOnce = () =>
+    run("POST /orders/ord_001/sync", () =>
+      fetch(`${API_BASE}/orders/ord_001/sync`, { method: "POST" }),
     );
 
   const raceTwoSyncs = async () => {
@@ -117,17 +133,14 @@ const App = () => {
     setError(null);
     try {
       const [a, b] = await Promise.all([
-        fetch(`${API_BASE}/debug/orders/ord_001/sync?delayMs=120`, {
-          method: "POST",
-        }),
-        fetch(`${API_BASE}/debug/orders/ord_001/sync?delayMs=120`, {
-          method: "POST",
-        }),
+        fetch(`${API_BASE}/orders/ord_001/sync?delayMs=120`, { method: "POST" }),
+        fetch(`${API_BASE}/orders/ord_001/sync?delayMs=120`, { method: "POST" }),
       ]);
       const [bodyA, bodyB] = await Promise.all([a.json(), b.json()]);
       pushLog(`race A → ${a.status}`, bodyA);
       pushLog(`race B → ${b.status}`, bodyB);
       await refreshStore();
+      await lookupOrder();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Race request failed");
     } finally {
@@ -136,16 +149,19 @@ const App = () => {
   };
 
   const resetStore = () =>
-    run("POST /debug/store/reset", () =>
-      fetch(`${API_BASE}/debug/store/reset`, { method: "POST" }),
+    run("POST /dev/store/reset", () =>
+      fetch(`${API_BASE}/dev/store/reset`, { method: "POST" }),
     );
 
   return (
     <main className="app">
       <header className="header">
         <div>
-          <h1>Skippio debug</h1>
-          <p className="muted">Temporary UI — inspect store & exercise APIs</p>
+          <h1>Skippio challenge</h1>
+          <p className="muted">
+            Spec APIs: payment-events, orders lookup/sync. Dev store panel kept
+            for local inspection.
+          </p>
         </div>
         <p className="health">
           Backend: <strong>{health}</strong>
@@ -157,22 +173,49 @@ const App = () => {
       <section className="panel">
         <h2>Actions</h2>
         <div className="actions">
-          <button type="button" disabled={busy} onClick={() => void submitSamplePayment()}>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void submitSamplePayment()}
+          >
             1. Submit sample payment
           </button>
-          <button type="button" disabled={busy} onClick={() => void replaySameEvent()}>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void replaySameEvent()}
+          >
             2. Replay same event
           </button>
-          <button type="button" disabled={busy} onClick={() => void syncOnce(0)}>
-            3. Retry POS sync
+          <button type="button" disabled={busy} onClick={() => void syncOnce()}>
+            3. POST /orders/ord_001/sync
           </button>
-          <button type="button" disabled={busy} onClick={() => void raceTwoSyncs()}>
-            4. Race two syncs (120ms delay)
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void raceTwoSyncs()}
+          >
+            4. Race two syncs
           </button>
-          <button type="button" disabled={busy} onClick={() => void refreshStore()}>
-            Refresh store
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void lookupOrder()}
+          >
+            GET /orders/ord_001
           </button>
-          <button type="button" disabled={busy} onClick={() => void resetStore()}>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void refreshStore()}
+          >
+            Refresh /dev/store
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void resetStore()}
+          >
             Reset store
           </button>
         </div>
@@ -182,12 +225,17 @@ const App = () => {
             checked={autoRefresh}
             onChange={(e) => setAutoRefresh(e.target.checked)}
           />
-          Auto-refresh store every 1s
+          Auto-refresh every 1s
         </label>
       </section>
 
       <section className="panel">
-        <h2>In-memory store</h2>
+        <h2>GET /orders/ord_001</h2>
+        <pre className="dump">{JSON.stringify(orderLookup, null, 2)}</pre>
+      </section>
+
+      <section className="panel">
+        <h2>GET /dev/store</h2>
         <pre className="dump">{JSON.stringify(storeDump, null, 2)}</pre>
       </section>
 
