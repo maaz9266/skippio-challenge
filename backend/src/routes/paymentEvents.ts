@@ -16,7 +16,10 @@ export const createPaymentEventsRouter = (store: MemoryStore): Router => {
       return;
     }
 
-    res.status(result.status).json({ order: result.order });
+    res.status(result.status).json({
+      order: result.order,
+      ...(result.duplicate ? { duplicate: true } : {}),
+    });
   });
 
   return router;

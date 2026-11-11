@@ -1,19 +1,31 @@
 import type { MemoryStore } from "../store/memoryStore.js";
 import type { Order, OrderResponse, PaymentEvent } from "../types/domain.js";
+import { orderDataMatches } from "./orderComparison.js";
 import { validatePaymentEvent } from "./paymentValidation.js";
 import { syncOrderToPos } from "./posSyncService.js";
 
+/**
+ * Duplicate / conflict response behaviour (Phase 5):
+ *
+ * - Same eventId again → 200 with existing order; no new POS attempt.
+ * - New eventId, same orderId, matching data → 200 with existing order;
+ *   record the new eventId; no new POS attempt; POS/refund state unchanged.
+ * - Same orderId with conflicting data → 409; store left unchanged.
+ * - First-time event → 201; create paid order; run initial POS sync.
+ */
+
 export type ProcessPaymentFailure = {
   ok: false;
-  status: 400;
+  status: 400 | 409;
   error: string;
   details?: string[];
 };
 
 export type ProcessPaymentSuccess = {
   ok: true;
-  status: 201;
+  status: 200 | 201;
   order: OrderResponse;
+  duplicate?: boolean;
 };
 
 export type ProcessPaymentResult = ProcessPaymentFailure | ProcessPaymentSuccess;
@@ -45,8 +57,7 @@ const createPaidOrder = (event: PaymentEvent): Order => ({
 });
 
 /**
- * Validates and records a first-time payment event as a paid order,
- * then attempts POS synchronisation (first attempt fails by design).
+ * Validates and processes a payment event with idempotent duplicate handling.
  */
 export const processPaymentEvent = async (
   store: MemoryStore,
@@ -63,6 +74,50 @@ export const processPaymentEvent = async (
   }
 
   const { event } = validation;
+
+  const existingOrderIdForEvent = store.getOrderIdForEvent(event.eventId);
+  if (existingOrderIdForEvent) {
+    const existing = store.getOrder(existingOrderIdForEvent);
+    if (!existing) {
+      return {
+        ok: false,
+        status: 400,
+        error: "Processed event references a missing order",
+      };
+    }
+
+    return {
+      ok: true,
+      status: 200,
+      duplicate: true,
+      order: toOrderResponse(existing),
+    };
+  }
+
+  const existingOrder = store.getOrder(event.order.id);
+  if (existingOrder) {
+    if (!orderDataMatches(existingOrder, event.order)) {
+      return {
+        ok: false,
+        status: 409,
+        error: "Conflicting order data for existing order id",
+        details: [
+          `Order ${event.order.id} already exists with different data`,
+        ],
+      };
+    }
+
+    // Same order, new event id — acknowledge without side effects.
+    store.recordProcessedEvent(event.eventId, existingOrder.id);
+
+    return {
+      ok: true,
+      status: 200,
+      duplicate: true,
+      order: toOrderResponse(existingOrder),
+    };
+  }
+
   const order = createPaidOrder(event);
 
   store.saveOrder(order);
