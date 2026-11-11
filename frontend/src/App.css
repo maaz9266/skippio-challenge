@@ -1,106 +1,205 @@
 .app {
-  max-width: 56rem;
+  max-width: 52rem;
   margin: 2rem auto 3rem;
-  padding: 0 1.25rem;
-  font-family: system-ui, sans-serif;
+  padding: 0 1.25rem 2rem;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
   line-height: 1.5;
-  color: #1f2328;
+  color: #1c1917;
+  background: linear-gradient(180deg, #fafaf9 0%, #f5f5f4 100%);
+  min-height: 100vh;
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: flex-start;
   margin-bottom: 1.25rem;
 }
 
 h1 {
-  margin: 0 0 0.25rem;
-  font-size: 1.6rem;
+  margin: 0 0 0.35rem;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 2rem;
+  font-weight: 600;
 }
 
 h2 {
-  margin: 0 0 0.75rem;
-  font-size: 1.05rem;
+  margin: 0 0 0.85rem;
+  font-size: 1.1rem;
+}
+
+h3 {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.95rem;
 }
 
 .muted {
   margin: 0;
-  color: #656d76;
-}
-
-.health {
-  margin: 0;
-  white-space: nowrap;
+  color: #78716c;
 }
 
 .panel {
-  margin-bottom: 1.25rem;
-  padding: 1rem 1.1rem;
-  border: 1px solid #d0d7de;
-  border-radius: 8px;
+  margin-bottom: 1rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid #e7e5e4;
+  border-radius: 10px;
   background: #fff;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+
+input {
+  border: 1px solid #d6d3d1;
+  border-radius: 6px;
+  padding: 0.45rem 0.55rem;
+  font: inherit;
+}
+
+input:disabled {
+  background: #f5f5f4;
+}
+
+.items {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.item-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.7fr 1fr auto;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+@media (max-width: 720px) {
+  .item-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  align-items: center;
+  margin-top: 0.85rem;
 }
 
 button {
-  border: 1px solid #d0d7de;
-  background: #f6f8fa;
+  border: 1px solid #292524;
+  background: #292524;
+  color: #fafaf9;
   border-radius: 6px;
-  padding: 0.45rem 0.75rem;
+  padding: 0.5rem 0.85rem;
+  font: inherit;
   cursor: pointer;
 }
 
+button.secondary {
+  background: #fff;
+  color: #292524;
+  border-color: #d6d3d1;
+}
+
 button:hover:not(:disabled) {
-  background: #eef1f4;
+  opacity: 0.92;
 }
 
 button:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
+.total {
+  margin: 0.85rem 0 0;
+}
+
+.lookup-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.lookup-row label {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+
+.meta div {
+  background: #fafaf9;
+  border: 1px solid #e7e5e4;
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem;
+}
+
+.meta dt {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #78716c;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.meta dd {
+  margin: 0.15rem 0 0;
+  font-weight: 600;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
   font-size: 0.95rem;
 }
 
+th,
+td {
+  text-align: left;
+  padding: 0.45rem 0.35rem;
+  border-bottom: 1px solid #e7e5e4;
+}
+
+.banner {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+}
+
+.banner.ok {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.banner.error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
 .dump {
-  margin: 0;
-  background: #f6f8fa;
-  border: 1px solid #d0d7de;
+  margin: 0.75rem 0 0;
+  background: #fafaf9;
+  border: 1px solid #e7e5e4;
   border-radius: 6px;
   padding: 0.75rem 1rem;
   overflow: auto;
-  max-height: 28rem;
-  font-size: 0.85rem;
-}
-
-.logs {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.75rem;
-}
-
-.log-meta {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 0.35rem;
-  font-size: 0.9rem;
-}
-
-.error {
-  color: #b42318;
-  margin: 0 0 1rem;
+  max-height: 22rem;
+  font-size: 0.82rem;
 }

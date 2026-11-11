@@ -1,18 +1,23 @@
 import { Router } from "express";
 import type { MemoryStore } from "../store/memoryStore.js";
 import { toOrderResponse } from "../services/paymentService.js";
+import { refundOrder } from "../services/refundService.js";
 import { syncOrderToPos } from "../services/posSyncService.js";
 
 /**
- * Order lookup and POS sync retry.
+ * Order lookup, POS sync retry, and full refund.
  *
- * POST /orders/:orderId/sync responses:
- * - 200: sync succeeded, or order already synced (no extra POS transaction)
- * - 200: sync attempt finished but POS rejected (order remains paid, posStatus failed)
- * - 409: synchronisation already in progress
+ * POST /orders/:orderId/sync:
+ * - 200: synced / already synced / POS rejected (paid preserved)
+ * - 409: sync already in progress
  * - 404: unknown order
+ * Optional `?delayMs=` for local race demos / tests.
  *
- * Optional `?delayMs=` keeps the fake POS call in flight (local race demos / tests).
+ * POST /orders/:orderId/refund:
+ * - 200: full refund applied
+ * - 409: already refunded
+ * - 400: ineligible
+ * - 404: unknown order
  */
 export const createOrdersRouter = (store: MemoryStore): Router => {
   const router = Router();
@@ -54,6 +59,20 @@ export const createOrdersRouter = (store: MemoryStore): Router => {
       error: result.ok ? undefined : result.error,
       order: toOrderResponse(result.order),
     });
+  });
+
+  router.post("/:orderId/refund", (req, res) => {
+    const result = refundOrder(store, req.params.orderId);
+
+    if (!result.ok) {
+      res.status(result.status).json({
+        error: result.error,
+        order: result.order,
+      });
+      return;
+    }
+
+    res.status(result.status).json({ order: result.order });
   });
 
   return router;
