@@ -40,33 +40,25 @@ const REFUND_TRANSITIONS: Record<RefundStatus, readonly RefundStatus[]> = {
   refunded: [],
 };
 
-export function canTransitionPayment(
+export const canTransitionPayment = (
   from: PaymentStatus,
   to: PaymentStatus,
-): boolean {
-  return PAYMENT_TRANSITIONS[from].includes(to);
-}
+): boolean => PAYMENT_TRANSITIONS[from].includes(to);
 
-export function canTransitionPos(from: PosStatus, to: PosStatus): boolean {
-  return POS_TRANSITIONS[from].includes(to);
-}
+export const canTransitionPos = (from: PosStatus, to: PosStatus): boolean =>
+  POS_TRANSITIONS[from].includes(to);
 
-export function canTransitionRefund(
+export const canTransitionRefund = (
   from: RefundStatus,
   to: RefundStatus,
-): boolean {
-  return REFUND_TRANSITIONS[from].includes(to);
-}
+): boolean => REFUND_TRANSITIONS[from].includes(to);
 
 /** Refund is eligible only when the order is paid and POS-synced. */
-export function isRefundEligible(input: {
+export const isRefundEligible = (input: {
   paymentStatus: PaymentStatus;
   posStatus: PosStatus;
   refundStatus: RefundStatus;
-}): boolean {
-  return (
-    input.paymentStatus === "paid" &&
-    input.posStatus === "synced" &&
-    input.refundStatus === "none"
-  );
-}
+}): boolean =>
+  input.paymentStatus === "paid" &&
+  input.posStatus === "synced" &&
+  input.refundStatus === "none";

@@ -12,42 +12,35 @@ export class MemoryStore {
   readonly processedEventIds = new Map<string, string>();
   readonly posTransactions = new Map<string, PosTransaction>();
 
-  getOrder(orderId: string): Order | undefined {
-    return this.orders.get(orderId);
-  }
+  getOrder = (orderId: string): Order | undefined => this.orders.get(orderId);
 
-  saveOrder(order: Order): void {
+  saveOrder = (order: Order): void => {
     this.orders.set(order.id, order);
-  }
+  };
 
-  getOrderIdForEvent(eventId: string): string | undefined {
-    return this.processedEventIds.get(eventId);
-  }
+  getOrderIdForEvent = (eventId: string): string | undefined =>
+    this.processedEventIds.get(eventId);
 
-  recordProcessedEvent(eventId: string, orderId: string): void {
+  recordProcessedEvent = (eventId: string, orderId: string): void => {
     this.processedEventIds.set(eventId, orderId);
-  }
+  };
 
-  getPosTransaction(transactionRef: string): PosTransaction | undefined {
-    return this.posTransactions.get(transactionRef);
-  }
+  getPosTransaction = (transactionRef: string): PosTransaction | undefined =>
+    this.posTransactions.get(transactionRef);
 
-  listPosTransactionsForOrder(orderId: string): PosTransaction[] {
-    return [...this.posTransactions.values()].filter(
-      (tx) => tx.orderId === orderId,
-    );
-  }
+  listPosTransactionsForOrder = (orderId: string): PosTransaction[] =>
+    [...this.posTransactions.values()].filter((tx) => tx.orderId === orderId);
 
-  savePosTransaction(transaction: PosTransaction): void {
+  savePosTransaction = (transaction: PosTransaction): void => {
     this.posTransactions.set(transaction.transactionRef, transaction);
-  }
+  };
 
   /** Clears all maps — intended for tests. */
-  reset(): void {
+  reset = (): void => {
     this.orders.clear();
     this.processedEventIds.clear();
     this.posTransactions.clear();
-  }
+  };
 }
 
 /** Shared store used by the running server. Tests should prefer a fresh instance. */

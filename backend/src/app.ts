@@ -1,7 +1,9 @@
 import cors from "cors";
 import express from "express";
+import { memoryStore, type MemoryStore } from "./store/memoryStore.js";
+import { createPaymentEventsRouter } from "./routes/paymentEvents.js";
 
-export function createApp() {
+export const createApp = (store: MemoryStore = memoryStore) => {
   const app = express();
 
   app.use(
@@ -15,5 +17,7 @@ export function createApp() {
     res.json({ ok: true });
   });
 
+  app.use("/payment-events", createPaymentEventsRouter(store));
+
   return app;
-}
+};
